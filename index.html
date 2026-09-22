@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MusicZone — Streaming & Audio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    
+    * {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      box-sizing: border-box;
+    }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #121216;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2b2b36;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #ff1744;
+    }
+
+    /* Custom range inputs */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      background: #2e2e38;
+      height: 6px;
+      border-radius: 3px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      margin-top: -5px;
+      background-color: #ff1744;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(255, 23, 68, 0.5);
+      transition: transform 0.1s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* Visualizer animation */
+    .bar-anim {
+      animation: bounce 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes bounce {
+      0% { height: 4px; }
+      100% { height: 20px; }
+    }
+
+    /* Card Hover Glow */
+    .track-card {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .track-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 30px -10px rgba(255, 23, 68, 0.25);
+    }
+
+    .hero-bg {
+      background: linear-gradient(135deg, rgba(15, 15, 20, 0.92) 0%, rgba(20, 10, 25, 0.75) 100%), 
+                  url('https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1200&auto=format&fit=crop') center/cover no-repeat;
+    }
+  </style>
+</head>
+<body class="bg-[#0b0b0f] text-gray-100 min-h-screen flex flex-col pb-28 selection:bg-rose-600 selection:text-white">
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-40 bg-[#121218]/90 backdrop-blur-md border-b border-gray-800/60 px-4 md:px-8 py-3.5 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-8">
+      <a href="#" class="flex items-center gap-2.5 group">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-rose-600/30 group-hover:scale-105 transition-transform">
+          <i class="fa-solid font-bold fa-music text-white text-lg"></i>
+        </div>
+        <span class="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-100 to-rose-500">
+          Music<span class="text-rose-500">Zone</span>
+        </span>
+      </a>
+
+      <!-- Desktop Navigation -->
+      <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-400">
+        <a href="#" class="text-white hover:text-rose-500 transition-colors flex items-center gap-2">
+          <i class="fa-solid fa-house"></i> Accueil
+        </a>
+        <a href="#explore" class="hover:text-rose-500 transition-colors flex items-center gap-2">
+          <i class="fa-solid fa-compass"></i> Explorer
+        </a>
+        <a href="#favorites" onclick="filterFavorites(event)" class="hover:text-rose-500 transition-colors flex items-center gap-2">
+          <i class="fa-solid fa-heart text-rose-500"></i> Favoris (<span id="favCount">0</span>)
+        </a>
+      </nav>
+    </div>
+
+    <!-- SEARCH BAR -->
+    <div class="flex-1 max-w-md mx-2">
+      <div class="relative flex items-center">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
+        <input 
+          type="text" 
+          id="searchInput" 
+          placeholder="Rechercher un titre, un artiste..." 
+          class="w-full bg-[#1b1b24] text-sm text-white pl-10 pr-4 py-2.5 rounded-full border border-gray-800 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all placeholder-gray-500"
+        />
+      </div>
+    </div>
+
+    <!-- USER OPTIONS -->
+    <div class="flex items-center gap-3">
+      <button onclick="toggleAuthModal()" class="bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-semibold px-5 py-2 rounded-full text-sm shadow-md shadow-rose-600/20 transition-all transform active:scale-95 flex items-center gap-2">
+        <i class="fa-regular fa-user"></i>
+        <span class="hidden sm:inline">Connexion</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- HERO SECTION -->
+  <section class="hero-bg relative mx-4 md:mx-8 my-6 rounded-3xl overflow-hidden p-6 md:p-12 border border-gray-800/80 shadow-2xl">
+    <div class="max-w-2xl relative z-10">
+      <span class="inline-block bg-rose-500/20 border border-rose-500/40 text-rose-400 font-semibold text-xs px-3 py-1 rounded-full uppercase tracking-widest mb-4 backdrop-blur-sm">
+        <i class="fa-solid fa-fire mr-1"></i> À la une
+      </span>
+      <h1 class="text-3xl md:text-5xl font-black text-white leading-tight mb-3">
+        Écoute tes morceaux préférés
+      </h1>
+      <p class="text-gray-300 text-base md:text-lg mb-6 line-clamp-2">
+        Découvre les meilleurs OSTs d'Anime, pistes Lo-Fi, J-Music et créations épiques réunies au même endroit.
+      </p>
+      <div class="flex flex-wrap items-center gap-4">
+        <button 
+          onclick="playTrack(0)" 
+          class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-7 py-3.5 rounded-full text-base flex items-center gap-3 shadow-lg shadow-rose-600/40 hover:scale-105 transition-all active:scale-95">
+          <i class="fa-solid fa-play text-lg"></i> Regarder & Écouter la une
+        </button>
+        <button 
+          onclick="addToQueue(0)" 
+          class="bg-[#1b1b24]/80 hover:bg-[#252533] border border-gray-700 text-white font-medium px-5 py-3.5 rounded-full text-sm backdrop-blur-sm transition-all flex items-center gap-2">
+          <i class="fa-solid fa-plus"></i> Ajouter à la file
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATEGORIES FILTER -->
+  <section class="px-4 md:px-8 mb-6" id="explore">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Genres & Style</h3>
+      <span class="text-xs text-gray-500" id="resultsCount">20 titres trouvés</span>
+    </div>
+    
+    <div class="categories flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-none" id="categoriesContainer">
+      <!-- Generated via JS -->
+    </div>
+  </section>
+
+  <!-- MAIN CONTENT: TRACKS GRID -->
+  <main class="px-4 md:px-8 flex-1">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+        <i class="fa-solid fa-compact-disc text-rose-500"></i>
+        <span id="sectionTitle">Morceaux Populaires</span>
+      </h2>
+    </div>
+
+    <!-- Music Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6" id="videoList">
+      <!-- Generated dynamically -->
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="hidden text-center py-16">
+      <i class="fa-solid fa-compact-disc text-5xl text-gray-600 mb-4 animate-spin"></i>
+      <h3 class="text-xl font-bold text-gray-400">Aucun morceau trouvé</h3>
+      <p class="text-gray-500 text-sm mt-1">Essayez de modifier votre recherche ou votre filtre de genre.</p>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="mt-16 bg-[#0f0f15] border-t border-gray-800/60 py-8 px-4 text-center text-sm text-gray-500">
+    <p>© 2026 MusicZone — Écoute illimitée & Expérience Sonore Immensive</p>
+  </footer>
+
+  <!-- PERSISTENT AUDIO PLAYER BAR -->
+  <div id="playerBar" class="fixed bottom-0 left-0 right-0 z-50 bg-[#121218]/95 border-t border-gray-800/80 backdrop-blur-xl px-4 py-3 transition-transform duration-300">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 md:gap-6">
+      
+      <!-- Track Info -->
+      <div class="flex items-center gap-3 w-full md:w-1/4">
+        <div class="relative group flex-shrink-0">
+          <img id="playerThumb" src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=120" alt="Cover" class="w-12 h-12 md:w-14 md:h-14 rounded-lg object-cover shadow-md border border-gray-700/50" />
+          <div id="playingVisualizer" class="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center gap-0.5 hidden">
+            <span class="w-1 bg-rose-500 bar-anim" style="animation-delay: 0.1s"></span>
+            <span class="w-1 bg-rose-500 bar-anim" style="animation-delay: 0.3s"></span>
+            <span class="w-1 bg-rose-500 bar-anim" style="animation-delay: 0.2s"></span>
+          </div>
+        </div>
+        <div class="min-w-0 flex-1">
+          <h4 id="playerTitle" class="text-white text-sm font-bold truncate">Sélectionnez un titre</h4>
+          <p id="playerArtist" class="text-gray-400 text-xs truncate">MusicZone Player</p>
+        </div>
+        <button id="playerFavBtn" onclick="toggleCurrentFavorite()" class="text-gray-400 hover:text-rose-500 transition-colors p-1.5">
+          <i class="fa-regular fa-heart text-base"></i>
+        </button>
+      </div>
+
+      <!-- Controls & Progress -->
+      <div class="flex flex-col items-center w-full md:w-2/4 gap-1.5">
+        <!-- Control buttons -->
+        <div class="flex items-center gap-5">
+          <button onclick="toggleShuffle()" id="shuffleBtn" class="text-gray-400 hover:text-white text-xs transition-colors" title="Lecture aléatoire">
+            <i class="fa-solid fa-shuffle"></i>
+          </button>
+          <button onclick="prevTrack()" class="text-gray-300 hover:text-white text-base transition-colors" title="Précédent">
+            <i class="fa-solid fa-backward-step"></i>
+          </button>
+          <button onclick="togglePlayPause()" id="mainPlayBtn" class="w-10 h-10 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-600/30 transition-transform active:scale-90">
+            <i class="fa-solid fa-play text-sm ml-0.5"></i>
+          </button>
+          <button onclick="nextTrack()" class="text-gray-300 hover:text-white text-base transition-colors" title="Suivant">
+            <i class="fa-solid fa-forward-step"></i>
+          </button>
+          <button onclick="toggleRepeat()" id="repeatBtn" class="text-gray-400 hover:text-white text-xs transition-colors" title="Répéter">
+            <i class="fa-solid fa-repeat"></i>
+          </button>
+        </div>
+
+        <!-- Scrubber Progress -->
+        <div class="w-full flex items-center gap-2 text-xs text-gray-400 font-mono">
+          <span id="currentTime">0:00</span>
+          <input type="range" id="progressBar" min="0" max="100" value="0" class="flex-1 h-1.5" oninput="seekTrack(this.value)">
+          <span id="totalDuration">0:00</span>
+        </div>
+      </div>
+
+      <!-- Volume & Extra -->
+      <div class="hidden md:flex items-center justify-end gap-3 w-1/4">
+        <button onclick="toggleQueueDrawer()" class="text-gray-400 hover:text-white text-sm p-1.5 relative" title="File d'attente">
+          <i class="fa-solid fa-list-ul"></i>
+          <span id="queueBadge" class="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
+        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="toggleMute()" id="muteBtn" class="text-gray-400 hover:text-white text-sm">
+            <i class="fa-solid fa-volume-high"></i>
+          </button>
+          <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.8" class="w-20 h-1" oninput="setVolume(this.value)">
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- QUEUE DRAWER -->
+  <div id="queueDrawer" class="fixed right-4 bottom-24 z-40 w-80 bg-[#161620] border border-gray-800 rounded-2xl shadow-2xl p-4 hidden backdrop-blur-xl">
+    <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-800">
+      <h3 class="text-sm font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-list text-rose-500"></i> File d'attente
+      </h3>
+      <button onclick="toggleQueueDrawer()" class="text-gray-400 hover:text-white text-xs">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div id="queueList" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+      <!-- Populated via JS -->
+    </div>
+  </div>
+
+  <!-- AUTH MODAL -->
+  <div id="authModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-[#181824] border border-gray-800 w-full max-w-md rounded-2xl p-6 relative shadow-2xl">
+      <button onclick="toggleAuthModal()" class="absolute right-4 top-4 text-gray-400 hover:text-white">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+      <h3 class="text-2xl font-bold text-white mb-2">Bienvenue sur MusicZone</h3>
+      <p class="text-gray-400 text-sm mb-6">Connecte-toi pour sauvegarder tes favoris et tes playlists.</p>
+      
+      <form onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1">Email / Identifiant</label>
+          <input type="text" required placeholder="nom@exemple.com" class="w-full bg-[#101018] border border-gray-700 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1">Mot de passe</label>
+          <input type="password" required placeholder="••••••••" class="w-full bg-[#101018] border border-gray-700 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-rose-500">
+        </div>
+        <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-lg text-sm transition-colors shadow-lg shadow-rose-600/30">
+          Se connecter
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    /* DATA STORE - Adapted tracks from original list with fallback synthesis audio generator */
+    const rawTracks = [
+      { id: 1, title: "Tanizaki & Naomi Theme", artist: "Bungo Stray Dogs", category: "Anime OST", duration: "0:21", image: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=400&auto=format&fit=crop", synthFreq: 261.63 },
+      { id: 2, title: "Tanjiro vs Akaza Epic Battle", artist: "Demon Slayer", category: "Epic", duration: "0:29", image: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&auto=format&fit=crop", synthFreq: 293.66 },
+      { id: 3, title: "Yuji Itadori Domain Expansion", artist: "Jujutsu Kaisen", category: "J-Music", duration: "0:17", image: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=400&auto=format&fit=crop", synthFreq: 329.63 },
+      { id: 4, title: "Quintuplets Romantic Chill", artist: "The Quintessential Quintuplets", category: "Chill", duration: "0:15", image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop", synthFreq: 349.23 },
+      { id: 5, title: "Luffy Gear 5 Symphony", artist: "One Piece", category: "Epic", duration: "0:21", image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop", synthFreq: 392.00 },
+      { id: 6, title: "Rudeus vs Orsted Lo-Fi Remix", artist: "Mushoku Tensei", category: "Lo-Fi", duration: "0:28", image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&auto=format&fit=crop", synthFreq: 440.00 },
+      { id: 7, title: "Ubuyashiki Sacrifice Ambient", artist: "Demon Slayer", category: "Ambient", duration: "0:34", image: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400&auto=format&fit=crop", synthFreq: 493.88 },
+      { id: 8, title: "Zenitsu vs Kaigaku Thunder Beats", artist: "Demon Slayer", category: "Electronic", duration: "0:24", image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&auto=format&fit=crop", synthFreq: 523.25 },
+      { id: 9, title: "Étincelles de demain", artist: "Original Sound", category: "Chill", duration: "0:35", image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&auto=format&fit=crop", synthFreq: 587.33 },
+      { id: 10, title: "Yamamoto Bankai Flame Anthem", artist: "Bleach", category: "Epic", duration: "0:59", image: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400&auto=format&fit=crop", synthFreq: 659.25 },
+      { id: 11, title: "Zoro vs King Heavy Guitar", artist: "One Piece", category: "Rock", duration: "0:24", image: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=400&auto=format&fit=crop", synthFreq: 698.46 },
+      { id: 12, title: "Bakugo Explosive Beats", artist: "My Hero Academia", category: "Hip-Hop", duration: "0:39", image: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400&auto=format&fit=crop", synthFreq: 783.99 },
+      { id: 13, title: "Tanjiro & Nezuko Lullaby", artist: "Demon Slayer", category: "Chill", duration: "0:20", image: "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&auto=format&fit=crop", synthFreq: 880.00 },
+      { id: 14, title: "Multi Characters Orchestra", artist: "Demon Slayer", category: "Anime OST", duration: "1:00", image: "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=400&auto=format&fit=crop", synthFreq: 987.77 },
+      { id: 15, title: "Weathering With You Piano", artist: "Radwimps Tribute", category: "J-Music", duration: "0:21", image: "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?w=400&auto=format&fit=crop", synthFreq: 523.25 },
+      { id: 16, title: "Yuta Okkotsu Cursed Beat", artist: "Jujutsu Kaisen", category: "Hip-Hop", duration: "0:50", image: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400&auto=format&fit=crop", synthFreq: 440.00 },
+      { id: 17, title: "Black Clover Demon Beats", artist: "Black Clover", category: "Electronic", duration: "0:19", image: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=400&auto=format&fit=crop", synthFreq: 392.00 },
+      { id: 18, title: "Shunsui Kyoraku Bankai Waltz", artist: "Bleach", category: "Ambient", duration: "0:12", image: "https://images.unsplash.com/photo-1445985543470-41fba5c3144a?w=400&auto=format&fit=crop", synthFreq: 329.63 },
+      { id: 19, title: "Solo Leveling x JJK Crossover", artist: "Korean OST", category: "Epic", duration: "1:00", image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop", synthFreq: 293.66 },
+      { id: 20, title: "Itsuki Nakano Sweet Acoustic", artist: "The Quintessential Quintuplets", category: "Chill", duration: "0:17", image: "https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=400&auto=format&fit=crop", synthFreq: 261.63 }
+    ];
+
+    const categories = ["Tous", "Anime OST", "Lo-Fi", "J-Music", "Epic", "Hip-Hop", "Rock", "Chill", "Ambient", "Electronic"];
+
+    // App State
+    let currentTrackIndex = -1;
+    let isPlaying = false;
+    let selectedGenre = "Tous";
+    let favorites = new Set();
+    let queue = [];
+    let isShuffle = false;
+    let isRepeat = false;
+
+    // Web Audio Synthesizer Fallback (Generates Melodic Tone when local video/audio files aren't found)
+    let audioCtx = null;
+    let synthOscillator = null;
+    let synthGain = null;
+    let synthInterval = null;
+    let synthTime = 0;
+    let currentDurationSec = 30;
+
+    // DOM Elements
+    const videoList = document.getElementById("videoList");
+    const categoriesContainer = document.getElementById("categoriesContainer");
+    const searchInput = document.getElementById("searchInput");
+    const playerTitle = document.getElementById("playerTitle");
+    const playerArtist = document.getElementById("playerArtist");
+    const playerThumb = document.getElementById("playerThumb");
+    const mainPlayBtn = document.getElementById("mainPlayBtn");
+    const progressBar = document.getElementById("progressBar");
+    const currentTimeEl = document.getElementById("currentTime");
+    const totalDurationEl = document.getElementById("totalDuration");
+    const playingVisualizer = document.getElementById("playingVisualizer");
+    const resultsCount = document.getElementById("resultsCount");
+    const emptyState = document.getElementById("emptyState");
+
+    // Initialize Page
+    window.addEventListener("DOMContentLoaded", () => {
+      renderCategories();
+      renderTracks(rawTracks);
+    });
+
+    function renderCategories() {
+      categoriesContainer.innerHTML = categories.map(cat => `
+        <button 
+          onclick="filterByGenre('${cat}', this)"
+          class="genre-btn flex-shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all ${cat === 'Tous' ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30' : 'bg-[#1b1b24] text-gray-400 hover:text-white hover:bg-[#252533]'}">
+          ${cat}
+        </button>
+      `).join('');
+    }
+
+    function renderTracks(tracks) {
+      if (tracks.length === 0) {
+        videoList.innerHTML = "";
+        emptyState.classList.remove("hidden");
+        resultsCount.textContent = "0 morceau trouvé";
+        return;
+      }
+
+      emptyState.classList.add("hidden");
+      resultsCount.textContent = `${tracks.length} morceau${tracks.length > 1 ? 's' : ''} trouvé${tracks.length > 1 ? 's' : ''}`;
+
+      videoList.innerHTML = tracks.map(track => {
+        const isFav = favorites.has(track.id);
+        const isCurrent = currentTrackIndex !== -1 && rawTracks[currentTrackIndex].id === track.id;
+
+        return `
+          <article class="track-card bg-[#161620] border border-gray-800/80 rounded-2xl p-3 flex flex-col group relative overflow-hidden" data-id="${track.id}">
+            <!-- Cover image -->
+            <div class="relative aspect-square rounded-xl overflow-hidden mb-3 bg-gray-900">
+              <img src="${track.image}" alt="${track.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <button 
+                  onclick="playTrackById(${track.id})" 
+                  class="w-11 h-11 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-600/40 hover:scale-110 transition-transform">
+                  <i class="fa-solid ${isCurrent && isPlaying ? 'fa-pause' : 'fa-play'} text-sm ${isCurrent && isPlaying ? '' : 'ml-0.5'}"></i>
+                </button>
+              </div>
+              <span class="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-gray-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                ${track.category}
+              </span>
+            </div>
+
+            <!-- Info -->
+            <div class="flex-1 flex flex-col justify-between">
+              <div>
+                <h3 class="text-white text-sm font-bold truncate group-hover:text-rose-400 transition-colors">${track.title}</h3>
+                <p class="text-gray-400 text-xs truncate mt-0.5">${track.artist}</p>
+              </div>
+              
+              <div class="flex items-center justify-between mt-3 pt-2 border-t border-gray-800/60 text-xs text-gray-500">
+                <span><i class="fa-regular fa-clock mr-1"></i>${track.duration}</span>
+                <button onclick="toggleFavorite(${track.id}, event)" class="hover:text-rose-500 transition-colors p-1">
+                  <i class="fa-${isFav ? 'solid text-rose-500' : 'regular'} fa-heart"></i>
+                </button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function filterByGenre(genre, btn) {
+      selectedGenre = genre;
+      document.querySelectorAll('.genre-btn').forEach(b => {
+        b.className = "genre-btn flex-shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all bg-[#1b1b24] text-gray-400 hover:text-white hover:bg-[#252533]";
+      });
+      btn.className = "genre-btn flex-shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all bg-rose-600 text-white shadow-md shadow-rose-600/30";
+
+      document.getElementById("sectionTitle").textContent = genre === "Tous" ? "Morceaux Populaires" : `Genre : ${genre}`;
+      applyFilters();
+    }
+
+    function filterFavorites(e) {
+      e.preventDefault();
+      document.getElementById("sectionTitle").textContent = "Mes Morceaux Favoris";
+      const favTracks = rawTracks.filter(t => favorites.has(t.id));
+      renderTracks(favTracks);
+    }
+
+    searchInput.addEventListener("input", () => {
+      applyFilters();
+    });
+
+    function applyFilters() {
+      const query = searchInput.value.toLowerCase().trim();
+      const filtered = rawTracks.filter(track => {
+        const matchesGenre = selectedGenre === "Tous" || track.category === selectedGenre;
+        const matchesQuery = track.title.toLowerCase().includes(query) || track.artist.toLowerCase().includes(query);
+        return matchesGenre && matchesQuery;
+      });
+      renderTracks(filtered);
+    }
+
+    function initAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playTrackById(id) {
+      const index = rawTracks.findIndex(t => t.id === id);
+      if (index !== -1) playTrack(index);
+    }
+
+    function playTrack(index) {
+      initAudioContext();
+
+      if (currentTrackIndex === index && isPlaying) {
+        pauseTrack();
+        return;
+      }
+
+      currentTrackIndex = index;
+      const track = rawTracks[currentTrackIndex];
+
+      // Update Player UI
+      playerTitle.textContent = track.title;
+      playerArtist.textContent = track.artist;
+      playerThumb.src = track.image;
+      totalDurationEl.textContent = track.duration;
+
+      updateFavIcon();
+      startSynthesizedAudio(track.synthFreq);
+      
+      isPlaying = true;
+      mainPlayBtn.innerHTML = '<i class="fa-solid fa-pause text-sm"></i>';
+      playingVisualizer.classList.remove('hidden');
+
+      renderTracks(rawTracks.filter(t => {
+        if (selectedGenre !== "Tous" && t.category !== selectedGenre) return false;
+        const q = searchInput.value.toLowerCase().trim();
+        return !q || t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q);
+      }));
+    }
+
+    function startSynthesizedAudio(baseFreq) {
+      stopSynthesizedAudio();
+
+      synthOscillator = audioCtx.createOscillator();
+      synthGain = audioCtx.createGain();
+
+      synthOscillator.type = 'sine';
+      synthOscillator.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+
+      synthGain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      synthOscillator.connect(synthGain);
+      synthGain.connect(audioCtx.destination);
+
+      synthOscillator.start();
+
+      // Parse duration
+      const parts = rawTracks[currentTrackIndex].duration.split(':');
+      currentDurationSec = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+
+      synthTime = 0;
+      clearInterval(synthInterval);
+
+      synthInterval = setInterval(() => {
+        if (!isPlaying) return;
+        synthTime++;
+
+        // Melodic arpeggio modulation
+        const notes = [1, 1.25, 1.5, 1.75];
+        const nextFreq = baseFreq * notes[synthTime % notes.length];
+        if (synthOscillator) {
+          synthOscillator.frequency.setValueAtTime(nextFreq, audioCtx.currentTime);
+        }
+
+        const pct = (synthTime / currentDurationSec) * 100;
+        progressBar.value = pct;
+        currentTimeEl.textContent = formatTime(synthTime);
+
+        if (synthTime >= currentDurationSec) {
+          nextTrack();
+        }
+      }, 1000);
+    }
+
+    function stopSynthesizedAudio() {
+      if (synthInterval) clearInterval(synthInterval);
+      if (synthOscillator) {
+        try { synthOscillator.stop(); } catch(e){}
+        synthOscillator.disconnect();
+        synthOscillator = null;
+      }
+    }
+
+    function pauseTrack() {
+      isPlaying = false;
+      mainPlayBtn.innerHTML = '<i class="fa-solid fa-play text-sm ml-0.5"></i>';
+      playingVisualizer.classList.add('hidden');
+      if (synthGain && audioCtx) {
+        synthGain.gain.setValueAtTime(0, audioCtx.currentTime);
+      }
+    }
+
+    function togglePlayPause() {
+      if (currentTrackIndex === -1) {
+        playTrack(0);
+      } else if (isPlaying) {
+        pauseTrack();
+      } else {
+        isPlaying = true;
+        mainPlayBtn.innerHTML = '<i class="fa-solid fa-pause text-sm"></i>';
+        playingVisualizer.classList.remove('hidden');
+        if (synthGain && audioCtx) {
+          synthGain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        }
+      }
+    }
+
+    function nextTrack() {
+      if (rawTracks.length === 0) return;
+      let nextIndex;
+      if (isShuffle) {
+        nextIndex = Math.floor(Math.random() * rawTracks.length);
+      } else {
+        nextIndex = (currentTrackIndex + 1) % rawTracks.length;
+      }
+      playTrack(nextIndex);
+    }
+
+    function prevTrack() {
+      if (rawTracks.length === 0) return;
+      let prevIndex = (currentTrackIndex - 1 + rawTracks.length) % rawTracks.length;
+      playTrack(prevIndex);
+    }
+
+    function seekTrack(val) {
+      if (currentTrackIndex === -1) return;
+      synthTime = Math.floor((val / 100) * currentDurationSec);
+      currentTimeEl.textContent = formatTime(synthTime);
+    }
+
+    function setVolume(val) {
+      if (synthGain && audioCtx) {
+        synthGain.gain.setValueAtTime(parseFloat(val) * 0.2, audioCtx.currentTime);
+      }
+    }
+
+    function toggleMute() {
+      const volSlider = document.getElementById("volumeSlider");
+      const muteBtn = document.getElementById("muteBtn");
+      if (volSlider.value > 0) {
+        volSlider.dataset.prevVal = volSlider.value;
+        volSlider.value = 0;
+        muteBtn.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
+        setVolume(0);
+      } else {
+        volSlider.value = volSlider.dataset.prevVal || 0.8;
+        muteBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+        setVolume(volSlider.value);
+      }
+    }
+
+    function toggleShuffle() {
+      isShuffle = !isShuffle;
+      document.getElementById("shuffleBtn").classList.toggle("text-rose-500", isShuffle);
+    }
+
+    function toggleRepeat() {
+      isRepeat = !isRepeat;
+      document.getElementById("repeatBtn").classList.toggle("text-rose-500", isRepeat);
+    }
+
+    function toggleFavorite(id, e) {
+      if (e) e.stopPropagation();
+      if (favorites.has(id)) {
+        favorites.delete(id);
+      } else {
+        favorites.add(id);
+      }
+      document.getElementById("favCount").textContent = favorites.size;
+      updateFavIcon();
+      applyFilters();
+    }
+
+    function toggleCurrentFavorite() {
+      if (currentTrackIndex !== -1) {
+        toggleFavorite(rawTracks[currentTrackIndex].id);
+      }
+    }
+
+    function updateFavIcon() {
+      const favBtn = document.getElementById("playerFavBtn");
+      if (currentTrackIndex !== -1 && favorites.has(rawTracks[currentTrackIndex].id)) {
+        favBtn.innerHTML = '<i class="fa-solid fa-heart text-rose-500 text-base"></i>';
+      } else {
+        favBtn.innerHTML = '<i class="fa-regular fa-heart text-base"></i>';
+      }
+    }
+
+    function addToQueue(index) {
+      queue.push(rawTracks[index]);
+      renderQueue();
+      const badge = document.getElementById("queueBadge");
+      badge.textContent = queue.length;
+      badge.classList.remove("hidden");
+    }
+
+    function renderQueue() {
+      const queueList = document.getElementById("queueList");
+      if (queue.length === 0) {
+        queueList.innerHTML = `<p class="text-xs text-gray-500 py-4 text-center">La file d'attente est vide.</p>`;
+        return;
+      }
+      queueList.innerHTML = queue.map((t, idx) => `
+        <div class="flex items-center justify-between bg-[#101018] p-2 rounded-lg text-xs">
+          <div class="truncate flex-1 pr-2">
+            <p class="text-white font-semibold truncate">${t.title}</p>
+            <p class="text-gray-400 text-[10px]">${t.artist}</p>
+          </div>
+          <button onclick="removeFromQueue(${idx})" class="text-gray-500 hover:text-rose-500">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function removeFromQueue(idx) {
+      queue.splice(idx, 1);
+      renderQueue();
+      const badge = document.getElementById("queueBadge");
+      badge.textContent = queue.length;
+      if (queue.length === 0) badge.classList.add("hidden");
+    }
+
+    function toggleQueueDrawer() {
+      document.getElementById("queueDrawer").classList.toggle("hidden");
+    }
+
+    function toggleAuthModal() {
+      document.getElementById("authModal").classList.toggle("hidden");
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      toggleAuthModal();
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+  </script>
+</body>
+</html>
